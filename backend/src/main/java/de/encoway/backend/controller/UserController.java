@@ -11,9 +11,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.springframework.http.HttpStatus.*;
+
+
 
 @RestController
 public class UserController {
+    private int maxLengthUsername = 64;
+    private int maxLengthPassword = 10;
 
     private UserRepository userRepository;
 
@@ -27,72 +32,58 @@ public class UserController {
         User user = new User();
         if (!Objects.equals(username, "")) {
             if (!Objects.equals(password, "")) {
-                if (username.length() <= 64) {
+                if (username.length() <= maxLengthUsername) {
                     user.setUsername(username);
-                    if (password.length() <= 10) {
+                    if (password.length() <= maxLengthPassword) {
                         user.setPassword(password);
                         userRepository.save(user);
-                    } else {
-                        return HttpStatus.NOT_ACCEPTABLE;
-                    }
-                } else {
-                    return HttpStatus.NOT_ACCEPTABLE;
-                }
-                return HttpStatus.CREATED;
-            } else {
-                return HttpStatus.NOT_ACCEPTABLE;
-            }
-        } else {
-            return HttpStatus.NOT_ACCEPTABLE;
-        }
+                        return CREATED;
+                    } else return NOT_ACCEPTABLE;
+                } else return NOT_ACCEPTABLE;
+            } else return NOT_ACCEPTABLE;
+        } else return NOT_ACCEPTABLE;
 
     }
 
     @DeleteMapping("/user/delete")
     public HttpStatus deleteUser(@RequestParam String username) {
-        if (userRepository.existsById(userRepository.findUserByUsername(username).getId())) {
+        if (userRepository.findUserByUsername(username) != null) {
             userRepository.delete(userRepository.findUserByUsername(username));
-            return HttpStatus.OK;
-        } else {
-            return HttpStatus.NOT_IMPLEMENTED;
-        }
+            return OK;
+        } else return NO_CONTENT;
 
 
     }
 
     @GetMapping("/user/data")
     public ResponseEntity<User> getUserData(@RequestParam String username) {
-        if (!userRepository.existsById(userRepository.findUserByUsername(username).getId())) {
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
-            return new ResponseEntity<>(userRepository.findUserByUsername(username), HttpStatus.OK);
-        }
+        if (userRepository.findUserByUsername(username) != null) {
+            return new ResponseEntity<>(userRepository.findUserByUsername(username), OK);
+        } else return new ResponseEntity<>(EXPECTATION_FAILED);
 
     }
 
 
     @PostMapping("/user/update")
     public HttpStatus updateUser(@RequestParam String username, @RequestParam String password) {
-        if (userRepository.findUserByUsername(username).getPassword() == password) {
-            return HttpStatus.CONFLICT;
-        } else {
+        if (userRepository.findUserByUsername(username) != null) {
+            if (password.equals(userRepository.findUserByUsername(username).getPassword())) {
+                return FORBIDDEN;
+            }
             userRepository.findUserByUsername(username).setPassword(password);
             userRepository.save(userRepository.findUserByUsername(username));
-            return HttpStatus.OK;
-        }
+            return OK;
+        } else return CONFLICT;
 
     }
 
     @GetMapping("/user/all")
     public ResponseEntity<List<User>> findAllUser() {
-
         List<User> allUser = new ArrayList<User>();
         userRepository.findAll().forEach(allUser::add);
         if (allUser.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        } else {
-            return new ResponseEntity<>(allUser, HttpStatus.OK);
-        }
+            return new ResponseEntity<>(NO_CONTENT);
+        } else return new ResponseEntity<>(allUser, OK);
 
     }
 
