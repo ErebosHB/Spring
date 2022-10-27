@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -14,12 +15,11 @@ import java.util.Objects;
 import static org.springframework.http.HttpStatus.*;
 
 
-
 @RestController
 public class UserController {
-    private int maxLengthUsername = 64;
-    private int maxLengthPassword = 10;
 
+    private int maxLengthUsername = 64;
+    int maxLengthPassword = 10;
     private UserRepository userRepository;
 
     @Autowired
@@ -29,63 +29,89 @@ public class UserController {
 
     @PostMapping("/user/create")
     public HttpStatus createUser(@RequestParam String username, @RequestParam String password) {
-        User user = new User();
-        if (!Objects.equals(username, "")) {
-            if (!Objects.equals(password, "")) {
-                if (username.length() <= maxLengthUsername) {
-                    user.setUsername(username);
-                    if (password.length() <= maxLengthPassword) {
-                        user.setPassword(password);
-                        userRepository.save(user);
-                        return CREATED;
-                    } else return NOT_ACCEPTABLE;
-                } else return NOT_ACCEPTABLE;
-            } else return NOT_ACCEPTABLE;
-        } else return NOT_ACCEPTABLE;
-
+        if (validateUsername(username) && validatePassword(password)) {
+            User user = new User();
+            user.setUsername(username);
+            user.setPassword(password);
+            userRepository.save(user);
+            return CREATED;
+        }
+        return FORBIDDEN;
     }
 
     @DeleteMapping("/user/delete")
     public HttpStatus deleteUser(@RequestParam String username) {
-        if (userRepository.findUserByUsername(username) != null) {
+        if (validateDelete(username)) {
             userRepository.delete(userRepository.findUserByUsername(username));
             return OK;
-        } else return NO_CONTENT;
-
-
+        }
+        return NO_CONTENT;
     }
 
     @GetMapping("/user/data")
     public ResponseEntity<User> getUserData(@RequestParam String username) {
-        if (userRepository.findUserByUsername(username) != null) {
+        if (validateData(username)) {
             return new ResponseEntity<>(userRepository.findUserByUsername(username), OK);
-        } else return new ResponseEntity<>(EXPECTATION_FAILED);
-
+        }
+        return new ResponseEntity<>(EXPECTATION_FAILED);
     }
 
 
     @PostMapping("/user/update")
     public HttpStatus updateUser(@RequestParam String username, @RequestParam String password) {
-        if (userRepository.findUserByUsername(username) != null) {
-            if (password.equals(userRepository.findUserByUsername(username).getPassword())) {
-                return FORBIDDEN;
-            }
+        if (validateUpdate(username, password)) {
             userRepository.findUserByUsername(username).setPassword(password);
             userRepository.save(userRepository.findUserByUsername(username));
             return OK;
-        } else return CONFLICT;
-
+        }
+        return CONFLICT;
     }
 
     @GetMapping("/user/all")
     public ResponseEntity<List<User>> findAllUser() {
         List<User> allUser = new ArrayList<User>();
         userRepository.findAll().forEach(allUser::add);
-        if (allUser.isEmpty()) {
-            return new ResponseEntity<>(NO_CONTENT);
-        } else return new ResponseEntity<>(allUser, OK);
+        if (validateList(allUser)) {
+            return new ResponseEntity<>(allUser, OK);
+        }
+        return new ResponseEntity<>(NOT_FOUND);
+    }
 
+    private boolean validateUsername(String username) {
+        if (username.length() <= maxLengthUsername) {
+            if (!username.contains(" ") && !username.equals("")) {
+                if (userRepository.findUserByUsername(username) == null){
+                    return username.matches("^[a-zA-Z0-9]*$");
+                }
+            }
+        }
+        return false;
     }
 
 
+    private boolean validatePassword(String password) {
+        if (password.length() <= maxLengthPassword){
+            if (!password.contains(" ") && !Objects.equals(password, "")){
+                return StandardCharsets.US_ASCII.newEncoder().canEncode(password);
+            }
+        }
+        return false;
+    }
+
+    private boolean validateDelete(String username) {
+        return userRepository.findUserByUsername(username) != null;
+    }
+
+    private boolean validateData(String username) {
+        return userRepository.findUserByUsername(username) != null;
+    }
+
+    private boolean validateUpdate(String username, String password) {
+        return userRepository.findUserByUsername(username) != null &&
+                !password.equals(userRepository.findUserByUsername(username).getPassword());
+    }
+
+    private boolean validateList(List<User> allUser) {
+        return !allUser.isEmpty();
+    }
 }
