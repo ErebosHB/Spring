@@ -17,7 +17,6 @@ import static org.springframework.http.HttpStatus.*;
 
 @RestController
 public class UserController {
-
     int maxLengthUsername = 64;
     int maxLengthPassword = 10;
     private final UserRepository userRepository;
