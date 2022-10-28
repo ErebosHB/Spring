@@ -18,9 +18,9 @@ import static org.springframework.http.HttpStatus.*;
 @RestController
 public class UserController {
 
-    private int maxLengthUsername = 64;
+    int maxLengthUsername = 64;
     int maxLengthPassword = 10;
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     @Autowired
     public UserController(UserRepository userRepository) {
@@ -69,7 +69,7 @@ public class UserController {
 
     @GetMapping("/user/all")
     public ResponseEntity<List<User>> findAllUser() {
-        List<User> allUser = new ArrayList<User>();
+        List<User> allUser = new ArrayList<>();
         userRepository.findAll().forEach(allUser::add);
         if (validateList(allUser)) {
             return new ResponseEntity<>(allUser, OK);
